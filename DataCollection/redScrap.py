@@ -11,43 +11,37 @@ reddit = praw.Reddit(
     user_agent="ElectionSentimentScraper"
 )
 
-# submission ID
 subreddit = reddit.subreddit('Philippines')
 post = reddit.submission(url='https://www.reddit.com/r/worldnews/comments/ulsmfq/philippines_marcos_maintains_huge_lead_in/')
 
 post.comments.replace_more(limit=None)
 
-# Store the comment data
-comment_data = []
+commentData = []
 
 # Function to recursively gather comment data
-def gather_comment_data(comment):
-    comment_data.append({
+def collectComment(comment):
+    commentData.append({
         'Comment': comment.body,
         'Timestamp': datetime.datetime.fromtimestamp(comment.created_utc, datetime.timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
         'Ups': comment.ups,
         'Downs': comment.downs
     })
     for reply in comment.replies:
-        gather_comment_data(reply)
+        collectComment(reply)
 
 # Iterate through all comments
 for comment in post.comments.list():
-    gather_comment_data(comment)
+    collectComment(comment)
 
-# Check if there are comments
-if len(comment_data) > 0:
-    # Create a DataFrame from the comment data
-    df = pd.DataFrame(comment_data)
+if len(commentData) > 0:
+    df = pd.DataFrame(commentData)
     
-    # Check if the if file exist
-    if os.path.exists('./redditData.csv'):
-        # Append to CSV File
-        df.to_csv('./redditData.csv', mode='a', header=False, index=False)
+    if os.path.exists('./redditDatad.csv'):
+        df.to_csv('./redditDatad.csv', mode='a', header=False, index=False)
     else:
         # If the file doesn't exist, create it with headers
-        df.to_csv('./redditData.csv', index=False)
+        df.to_csv('./redditDatad.csv', index=False)
     
-    print(f"Added {len(comment_data)} comments to redditData.csv")
+    print(f"Added {len(commentData)} comments")
 else:
     print("No comments found.")

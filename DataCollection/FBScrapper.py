@@ -7,23 +7,21 @@ import random
 
 # IMPORTANT: Replace with your actual cookies
 cookies = {
-    'c_user': '',
-    'xs': '',
-    'fr': ''
+    'c_user': '100010497515883',
+    'xs': '9:3B7oXdgwFafyqg:2:1737153581:-1:8175',
+    'fr': '1JWykjW6xcCH19iwK.AWWNdSjV2JRLbKTRri09utPiGOM.BnildJ..AAA.0.0.BniuYS.AWW--Y0cabU'
 }
 
 # post ID
-postId = "pfbid0dxHUENDCkrRwK91johoGZFwVua1ZbVwjsaPsD8Vmk4pFP56d9qMeuBghjtxPTVJPl"
+postId = "pfbid0ExJimUfa4K4bjq1CE5KrEaNKvdGGS3yJJMhfagsTKT8RhxsJjoMgrGDDjW6zyyDtl"
 maxComments = True
 
-# Initialize scraper with cookies
 gen = fs.get_posts(
     post_urls=[postId],
     cookies=cookies,
     options={"comments": maxComments, "progress": True}
 )
 
-# Extract the post and its comments
 post = next(gen)
 commentsData = post['comments_full']
 
@@ -37,9 +35,6 @@ def gather_comment_data(comment):
         'Timestamp': comment['comment_time'],
         'Likes': comment['comment_reaction_count']
     })
-    # Rate limit
-    delay = random.uniform(1, 2)  # Random float between 1 and 2 seconds
-    time.sleep(delay)
 
     for reply in comment.get('replies', []):
         gather_comment_data(reply)
@@ -50,16 +45,12 @@ for comment in commentsData:
 
 # Check if there are comments
 if len(comment_data) > 0:
-    # Convert the comment data to a DataFrame
     df = pd.DataFrame(comment_data)
     
-    # Check if the file  exists
     if os.path.exists('./FbData.csv'):
-        # Append to CSV file
         df.to_csv('./FbData.csv', mode='a', header=False, index=False)
         print(f"Added {len(comment_data)} comments to {'./FbData.csv'}.")
     else:
-        # If the file doesn't exist, create it with headers
         df.to_csv('./FbData.csv', index=False)
         print(f"Created {'./FbData.csv'} and added {len(comment_data)} comments.")
 else:
