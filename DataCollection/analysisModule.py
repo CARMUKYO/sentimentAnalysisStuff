@@ -3,12 +3,18 @@ import asyncio
 import os
 import csv
 import pandas as pd
+import re
+import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
+import configparser
 from nltk.sentiment import SentimentIntensityAnalyzer
 from sklearn import metrics
 from random import randint
 from twikit import Client, TooManyRequests
+from nltk.corpus import stopwords
+from itertools import combinations
+from collections import Counter
 
 # Ensure VADER is downloaded
 import nltk
@@ -21,7 +27,6 @@ def loadModel(modelPath):
     if os.path.exists(modelPath):
         return joblib.load(modelPath)
     else:
-        print(f"Warning: {modelPath} not found! Make sure the model is trained and available.")
         return None
 
 # Load all models
@@ -42,11 +47,11 @@ def predictSentimentVader(textData):
     for text in textData:
         score = vaderAnalyzer.polarity_scores(text)["compound"]
         if score >= 0.05:
-            predictions.append("pos")
+            predictions.append("positive")
         elif score <= -0.05:
-            predictions.append("neg")
+            predictions.append("negative")
         else:
-            predictions.append("neut")
+            predictions.append("neutral")
     return predictions
 
 # Process CSV File
@@ -96,7 +101,7 @@ def analyzeText(text):
 
 #Metric Calculation
 def calculateMetrics(yTrue, yPred):
-    classes = ['pos', 'neg', 'neut']
+    classes = ['positive', 'negative', 'neutral']
     metrics_dict = {'accuracy': metrics.accuracy_score(yTrue, yPred)}  # Overall accuracy
 
     for cls in classes:
@@ -124,13 +129,16 @@ def calculateMetrics(yTrue, yPred):
 
     return metrics_dict
 
-userAgent = ""
+config = configparser.ConfigParser()
+config.read("config.ini")
+
+userAgent = config.get('Twitter', 'UserAgent', fallback='')
 cookies = {
-    "authToken": "",
-    "ct0": ""
+    "authToken": config.get('Twitter', 'AuthToken', fallback=''),
+    "ct0": config.get('Twitter', 'CT0', fallback='')
 }
 
-#Cookie load
+# Load Cookie
 async def createClientWithCookies():
     return Client(
         user_agent=userAgent,
@@ -141,6 +149,57 @@ async def createClientWithCookies():
             "cookie": f"auth_token={cookies['authToken']}; ct0={cookies['ct0']};"
         }
     )
+
+# Function to create a word network graph
+def create_word_network(texts, num_words=75, min_edge_weight=2):
+    
+    try:
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        nltk.download('stopwords', quiet=True)
+    
+    stop_words = set(stopwords.words('english'))
+    custom_stopwords = {"na", "ng", "https", "www", "lang", "mga", "ka", "ang", "may", 
+                        "yung", "yan", "nga", "com", "kung", "pag"}
+    stop_words.update(custom_stopwords)
+    
+    # Extract words from all texts and count their frequency
+    all_words = []
+    for text in texts:
+        if isinstance(text, str):
+            words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
+            filtered_words = [word for word in words if word not in stop_words]
+            all_words.extend(filtered_words)
+    
+    word_counts = Counter(all_words)
+    top_words = [word for word, count in word_counts.most_common(num_words)]
+    
+    G = nx.Graph()
+    
+    # Process each text to find co-occurrences between top words
+    edge_weights = {}
+    for text in texts:
+        if not isinstance(text, str):
+            continue
+        
+        text_words = [word.lower() for word in re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
+                     if word.lower() in top_words]
+        
+        # Count co-occurrences (pairs of words that appear in the same text)
+        for word1, word2 in combinations(set(text_words), 2):
+            if word1 != word2:
+                edge_key = tuple(sorted([word1, word2]))
+                edge_weights[edge_key] = edge_weights.get(edge_key, 0) + 1
+    
+    # Add nodes with their frequency as a property
+    for word in top_words:
+        G.add_node(word, size=word_counts[word])
+    
+    for (word1, word2), weight in edge_weights.items():
+        if weight >= min_edge_weight:
+            G.add_edge(word1, word2, weight=weight)
+    
+    return G, word_counts
 
 #Function to Scrape
 async def scrapeTweets(query, limit=100, csvFile="ScrapeData.csv"):

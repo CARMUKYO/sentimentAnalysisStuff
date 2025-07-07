@@ -3,16 +3,21 @@ import datetime
 import csv
 import pandas as pd
 import os
+import configparser
+
+# Read configuration from config.ini
+config = configparser.ConfigParser()
+config.read('config.ini')
 
 # API credentials
 reddit = praw.Reddit(
-    client_id="CubUGYFSzyDt4IsCvp4P2g",
-    client_secret="hAz7c4Mn--iFPiF4hv4VpGbsgp8mHA",
-    user_agent="ElectionSentimentScraper"
+    client_id=config.get('Reddit', 'ClientID', fallback=''),
+    client_secret=config.get('Reddit', 'ClientSecret', fallback=''),
+    user_agent=config.get('Reddit', 'UserAgent', fallback='')
 )
 
-subreddit = reddit.subreddit('Philippines')
-post = reddit.submission(url='https://www.reddit.com/r/worldnews/comments/ulsmfq/philippines_marcos_maintains_huge_lead_in/')
+subreddit = reddit.subreddit(config.get('Reddit', 'Subreddit', fallback='Philippines'))
+post = reddit.submission(url=config.get('Post', 'URL', fallback=''))
 
 post.comments.replace_more(limit=None)
 
@@ -36,12 +41,13 @@ for comment in post.comments.list():
 if len(commentData) > 0:
     df = pd.DataFrame(commentData)
     
-    if os.path.exists('./redditDatad.csv'):
-        df.to_csv('./redditDatad.csv', mode='a', header=False, index=False)
+    output_file = config.get('Output', 'CSVFile', fallback='./redditDatad.csv')
+    if os.path.exists(output_file):
+        df.to_csv(output_file, mode='a', header=False, index=False)
     else:
         # If the file doesn't exist, create it with headers
-        df.to_csv('./redditDatad.csv', index=False)
+        df.to_csv(output_file, index=False)
     
-    print(f"Added {len(commentData)} comments")
+    print(f"Added {len(commentData)} comments to {output_file}")
 else:
     print("No comments found.")

@@ -1,19 +1,23 @@
 import asyncio
 import os
 import csv
+import configparser
 from random import randint
 from twikit import Client, TooManyRequests
 
-# IMPORTANT: Replace with your actual cookies
-userAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0"  # Replace with your user agent string
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+# Get configuration values
+userAgent = config.get('Twitter', 'UserAgent', fallback='')
 cookies = {
-    "authToken": "d6753577a055836e42e4647286ec62efa6b6f00f",  # Replace with your auth_token
-    "ct0": "833c47a3c0583d8a2331b0e28c4b946cf7d2825e2f05704756da7a24ad2f2e93abaf4821f9d0f3d1f7313a53896dd19725de32e9b6eaef1881cc4cd6ede0b01c0d2d2a115427e3a801ab16af516b5b61"  # Replace with your ct0 token
+    "authToken": config.get('Twitter', 'AuthToken', fallback=''),
+    "ct0": config.get('Twitter', 'CT0', fallback='')
 }
-query = "bongbong marcos leni ph until:2022-05-09 since:2022-05-08 -filter:links"
-tweetType = "top"
-limit = 110
-csvFile = 'twitterData.csv'
+query = config.get('Search', 'Query', fallback='')
+tweetType = config.get('Search', 'TweetType', fallback='top')
+limit = config.getint('Search', 'Limit', fallback=100)
+csvFile = config.get('Output', 'CSVFile', fallback='twitterData.csv')
 
 async def createClientWithCookies():
     return Client(
@@ -26,7 +30,7 @@ async def createClientWithCookies():
         }
     )
 
-# Function to scrape tweets
+#Get Tweets
 async def getTweet(client, query, tweetType, maximum):
     tweetCount = 0
     tweet = None
@@ -66,7 +70,7 @@ async def getTweet(client, query, tweetType, maximum):
 
 async def main():
     if not all([userAgent, cookies.get('authToken'), cookies.get('ct0')]):
-        print("ERROR: Please provide User Agent and Cookies!")
+        print("ERROR: Please provide User Agent and Cookies in config.ini!")
         return
 
     client = await createClientWithCookies()

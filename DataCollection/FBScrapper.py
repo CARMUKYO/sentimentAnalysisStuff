@@ -3,18 +3,23 @@ import pandas as pd
 import emoji
 import os
 import time
-import random 
+import random
+import configparser
+
+# Read configuration from config.ini
+config = configparser.ConfigParser()
+config.read('config.ini')
 
 # IMPORTANT: Replace with your actual cookies
 cookies = {
-    'c_user': '100010497515883',
-    'xs': '9:3B7oXdgwFafyqg:2:1737153581:-1:8175',
-    'fr': '1JWykjW6xcCH19iwK.AWWNdSjV2JRLbKTRri09utPiGOM.BnildJ..AAA.0.0.BniuYS.AWW--Y0cabU'
+    'c_user': config.get('Facebook', 'CUser', fallback=''),
+    'xs': config.get('Facebook', 'XS', fallback=''),
+    'fr': config.get('Facebook', 'FR', fallback='')
 }
 
 # post ID
-postId = "pfbid0ExJimUfa4K4bjq1CE5KrEaNKvdGGS3yJJMhfagsTKT8RhxsJjoMgrGDDjW6zyyDtl"
-maxComments = True
+postId = config.get('Post', 'ID', fallback='')
+maxComments = config.getboolean('Post', 'MaxComments', fallback=True)
 
 gen = fs.get_posts(
     post_urls=[postId],
@@ -29,7 +34,6 @@ comment_data = []
 
 # Function to recursively gather comment data
 def gather_comment_data(comment):
-    """Flatten the comment and reply hierarchy into a single list."""
     comment_data.append({
         'Comment': emoji.emojize(comment['comment_text']),
         'Timestamp': comment['comment_time'],
@@ -47,11 +51,12 @@ for comment in commentsData:
 if len(comment_data) > 0:
     df = pd.DataFrame(comment_data)
     
-    if os.path.exists('./FbData.csv'):
-        df.to_csv('./FbData.csv', mode='a', header=False, index=False)
-        print(f"Added {len(comment_data)} comments to {'./FbData.csv'}.")
+    output_file = config.get('Output', 'CSVFile', fallback='./FbData.csv')
+    if os.path.exists(output_file):
+        df.to_csv(output_file, mode='a', header=False, index=False)
+        print(f"Added {len(comment_data)} comments to {output_file}.")
     else:
-        df.to_csv('./FbData.csv', index=False)
-        print(f"Created {'./FbData.csv'} and added {len(comment_data)} comments.")
+        df.to_csv(output_file, index=False)
+        print(f"Created {output_file} and added {len(comment_data)} comments.")
 else:
     print("No comments found.")

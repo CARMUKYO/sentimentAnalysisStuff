@@ -56,7 +56,7 @@ class TextPreprocessor:
         if not isinstance(text, str):
             return ""
         text = re.sub(r'https?://\S+|www\.\S+', '', text)  # Remove URLs
-        text = re.sub(r'@\w+|#\w+', '', text)  
+        text = re.sub(r'@\w+', '', text)  
         text = re.sub(r'[^\w\s.,!?\'"🙂🙁😂😭😍😡]', '', text)  # Keep punctuation & emojis
         text = ' '.join(text.split())  # Remove extra whitespace
         return text
@@ -67,6 +67,7 @@ class TextPreprocessor:
             return ""
         return re.sub(r'(.)\1{2,}', r'\1\1', text)
     
+    # Normalize elongated characters
     def expandContractions(self, text):
         contractions = {
             "can't": "cannot", "won't": "will not", "n't": " not",
@@ -82,10 +83,9 @@ class TextPreprocessor:
             text = re.sub(contraction, full_form, text, flags=re.IGNORECASE)
         return text
     
+    #Filter Uncessary Data
     def isRelevant(self, text):
-        """Detect if text is in Filipino or English and filter out ads."""
-        ad_keywords = ["buy now", "limited offer", "discount", "promo", "subscribe", "order now",
-                       "vote for", "campaign", "election", "candidate", "poll", "ballot", "rally"]
+        ad_keywords = ["buy now", "limited offer", "discount", "promo", "subscribe", "order now",]
         
         if not isinstance(text, str) or not text.strip():
             return False
@@ -104,8 +104,7 @@ class TextPreprocessor:
     
     def preprocessText(self, text):
         if not isinstance(text, str):
-            return ""
-        
+            return ""       
         # 1: Expand contractions
         textExpanded = self.expandContractions(text)
         # 2: Replace tags (remove URLs, mentions, etc.)
